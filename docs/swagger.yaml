@@ -380,6 +380,11 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/handlers.scheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
         "409":
           description: Conflict
           schema:

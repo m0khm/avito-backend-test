@@ -40,7 +40,7 @@ type scheduleHandlerScheduleRepo struct {
 
 func (r *scheduleHandlerScheduleRepo) Create(ctx context.Context, schedule domain.Schedule) (*domain.Schedule, error) {
 	if r.duplicateOnce {
-		return nil,  errors.New("duplicate key")
+		return nil, errors.New("duplicate key")
 	}
 
 	r.created = &schedule
@@ -73,7 +73,8 @@ func (g *scheduleHandlerSlotGen) ExtendAll(ctx context.Context) error {
 
 func withRoomIDParam(r *http.Request, roomID string) *http.Request {
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("roomId", roomID)
+	rctx.URLParams.Keys = append(rctx.URLParams.Keys, "roomId")
+	rctx.URLParams.Values = append(rctx.URLParams.Values, roomID)
 	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 }
 
@@ -88,7 +89,7 @@ func TestCreateSchedule_Success(t *testing.T) {
 		schedules: service.NewScheduleService(roomRepo, scheduleRepo, slotGen, 7),
 	}
 
-	body := []byte(`{"daysOfWeek":[1,2,3],"startTime":"09:00","endTime":"18:00"}`)
+	body := []byte(`{"roomId":"` + roomID + `","daysOfWeek":[1,2,3],"startTime":"09:00","endTime":"18:00"}`)
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID+"/schedule/create", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = withRoomIDParam(req, roomID)
@@ -139,7 +140,7 @@ func TestCreateSchedule_RoomNotFound(t *testing.T) {
 		schedules: service.NewScheduleService(roomRepo, scheduleRepo, slotGen, 7),
 	}
 
-	body := []byte(`{"daysOfWeek":[1,2,3],"startTime":"09:00","endTime":"18:00"}`)
+	body := []byte(`{"roomId":"` + roomID + `","daysOfWeek":[1,2,3],"startTime":"09:00","endTime":"18:00"}`)
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID+"/schedule/create", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = withRoomIDParam(req, roomID)
@@ -166,7 +167,7 @@ func TestCreateSchedule_Conflict(t *testing.T) {
 		schedules: service.NewScheduleService(roomRepo, scheduleRepo, slotGen, 7),
 	}
 
-	body := []byte(`{"daysOfWeek":[1,2,3],"startTime":"09:00","endTime":"18:00"}`)
+	body := []byte(`{"roomId":"` + roomID + `","daysOfWeek":[1,2,3],"startTime":"09:00","endTime":"18:00"}`)
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID+"/schedule/create", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = withRoomIDParam(req, roomID)
@@ -179,5 +180,35 @@ func TestCreateSchedule_Conflict(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"SCHEDULE_EXISTS"`) {
 		t.Fatalf("expected SCHEDULE_EXISTS error, body=%s", rec.Body.String())
+	}
+}
+
+func TestCreateSchedule_RoomIDMismatch(t *testing.T) {
+	const pathRoomID = "11111111-1111-1111-1111-111111111111"
+	const bodyRoomID = "22222222-2222-2222-2222-222222222222"
+
+	roomRepo := &scheduleHandlerRoomRepo{exists: true}
+	scheduleRepo := &scheduleHandlerScheduleRepo{}
+	slotGen := &scheduleHandlerSlotGen{}
+
+	h := &Handler{
+		schedules: service.NewScheduleService(roomRepo, scheduleRepo, slotGen, 7),
+	}
+
+	body := []byte(`{
+		"roomId":"` + bodyRoomID + `",
+		"daysOfWeek":[1,2,3],
+		"startTime":"09:00",
+		"endTime":"18:00"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/rooms/"+pathRoomID+"/schedule/create", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = withRoomIDParam(req, pathRoomID)
+
+	rec := httptest.NewRecorder()
+	h.CreateSchedule(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d, body=%s", rec.Code, rec.Body.String())
 	}
 }

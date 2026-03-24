@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"room-booking-service/internal/domain"
@@ -24,18 +25,30 @@ func (r *SlotRepository) BulkUpsert(ctx context.Context, slots []domain.Slot) er
 		return nil
 	}
 
-	q := `
+	var sb strings.Builder
+	args := make([]any, 0, len(slots)*4)
+
+	sb.WriteString(`
 		INSERT INTO slots (id, room_id, start_at, end_at)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT DO NOTHING
-	`
+		VALUES
+	`)
 
-	db := tx.DB(ctx, r.pool)
-
-	for _, slot := range slots {
-		if _, err := db.Exec(ctx, q, slot.ID, slot.RoomID, slot.Start, slot.End); err != nil {
-			return fmt.Errorf("bulk upsert slots: %w", err)
+	for i, slot := range slots {
+		if i > 0 {
+			sb.WriteString(",")
 		}
+
+		base := i * 4
+		sb.WriteString(fmt.Sprintf("($%d, $%d, $%d, $%d)", base+1, base+2, base+3, base+4))
+		args = append(args, slot.ID, slot.RoomID, slot.Start, slot.End)
+	}
+
+	sb.WriteString(`
+		ON CONFLICT DO NOTHING
+	`)
+
+	if _, err := tx.DB(ctx, r.pool).Exec(ctx, sb.String(), args...); err != nil {
+		return fmt.Errorf("bulk upsert slots: %w", err)
 	}
 
 	return nil

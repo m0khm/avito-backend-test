@@ -410,6 +410,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/handlers.scheduleResponse"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
                     "409": {
                         "description": "Conflict",
                         "schema": {

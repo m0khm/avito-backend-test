@@ -31,7 +31,6 @@ test: ### run test
 cover: ### run test with coverage
 	go test -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out
-	rm coverage.out
 .PHONY: coverage
 
 linter-golangci: ### check by golangci linter

@@ -80,6 +80,13 @@ type createRoomRequest struct {
 	Capacity    *int    `json:"capacity"`
 }
 
+type createScheduleRequest struct {
+	RoomID     string `json:"roomId"`
+	DaysOfWeek []int  `json:"daysOfWeek"`
+	StartTime  string `json:"startTime"`
+	EndTime    string `json:"endTime"`
+}
+
 type createBookingRequest struct {
 	SlotID               string `json:"slotId"`
 	CreateConferenceLink bool   `json:"createConferenceLink"`

@@ -339,7 +339,17 @@ func TestHTTPFlow_CreateAndCancelBooking(t *testing.T) {
 	if isoDay == 0 {
 		isoDay = 7
 	}
-	schedBody, _ := json.Marshal(domain.Schedule{DaysOfWeek: []int{isoDay}, StartTime: "09:00", EndTime: "10:00"})
+	schedBody, _ := json.Marshal(struct {
+	RoomID     string `json:"roomId"`
+	DaysOfWeek []int  `json:"daysOfWeek"`
+	StartTime  string `json:"startTime"`
+	EndTime    string `json:"endTime"`
+	}{
+	RoomID:     roomResp.Room.ID,
+	DaysOfWeek: []int{isoDay},
+	StartTime:  "09:00",
+	EndTime:    "10:00",
+	})
 	scheduleReq := httptest.NewRequest(http.MethodPost, "/rooms/"+roomResp.Room.ID+"/schedule/create", bytes.NewReader(schedBody))
 	scheduleReq.Header.Set("Content-Type", "application/json")
 	scheduleReq.Header.Set("Authorization", "Bearer "+adminToken)
